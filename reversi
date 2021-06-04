@@ -1,0 +1,370 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+
+#define MAX_SIZE 20
+
+#define FALSE 0
+#define TRUE  1
+
+#define PLAYERX 'X'
+#define PLAYERO 'O'
+
+char board[MAX_SIZE][MAX_SIZE];
+char current_player;
+int game_ended = FALSE;
+int skipped_turn = FALSE;
+int wrong_move = FALSE;
+int has_valid_move = FALSE;
+int scores[2];//0 is for X 1 is for O
+
+int checkMoves(int dirs[8]);
+int getBoardSize();
+void init_game(int size);
+void drawBoard(int size);
+void changeCurrentPlayer();
+void displayScore();
+void prompt_move(int* p_row, int* p_column, int size);
+int is_valid_position(int i, int j, int size);
+void makeMove(int count, int col, int row, int rowChange, int colChange);
+void checkDirs(int size);
+int checkMoves(int dirs[8]);
+void validMove(int row, int col, int size, int dirs[8]);
+int checkDir(int row, int col, int size, int dirRow, int dirCol);
+char getEnemy();
+int checkIfNotEmpty(int size);
+int checkGameOver(int size);
+int leading();
+int HasValidMove(int size);
+void display_winner(int hasWon);
+int checkInput(int col, int row, int size);
+
+
+void main()
+{
+	int hasWon = 0;
+	int size = getBoardSize();
+	if (size != 0) {
+		initGame(size);
+		while (!game_ended) {
+			hasWon = checkGameOver(size);
+			if (hasWon != 0) {
+				game_ended = TRUE;
+				break;
+			}
+			drawBoard(size);
+			displayScore();
+			if (!HasValidMove(size)) {
+				if (skipped_turn == 1) {
+					game_ended = FALSE;
+					hasWon = leading();
+					break;
+				}
+				else
+					skipped_turn = TRUE;
+				printf("Turn skipped!\n");
+				changeCurrentPlayer();
+			}
+			else {
+				checkDirs(size);
+				skipped_turn = 0;
+			}
+
+		}
+		drawBoard(size);
+		displayScore();
+		display_winner(hasWon);
+	}
+}
+
+void display_winner(int hasWon) {
+	printf("Game over!\nthe score was %i to X and %i to O\n\n\n", scores[0], scores[1]);
+	if (hasWon == 1) {
+		printf("X won!");
+	}
+	else if (hasWon == 2) {
+		printf("O won!");
+	}
+	else {
+		printf("Tie!");
+	}
+}
+
+int HasValidMove(int size) {
+	int check[MAX_SIZE][MAX_SIZE];
+	int moves[8];
+	for (int i = 0; i < size; i++)
+	{
+		for (int j = 0; j < size; j++)
+		{
+			if (board[i][j] == '.') {
+				validMove(i, j, size, moves);
+				check[i][j] = checkMoves(moves);
+			}
+			else {
+				check[i][j] = 0;
+			}
+
+		}
+	}
+	for (int i = 0; i < size; i++)
+	{
+		for (int j = 0; j < size; j++)
+		{
+			if (check[i][j] == 1) {
+				return 1;
+			}
+		}
+	}
+	return 0;
+
+}
+
+int leading() {
+	if (scores[0] > scores[1])
+		return 1;
+	if (scores[0] < scores[1])
+		return 2;
+	return 3;
+}
+
+int checkGameOver(int size) {
+	if (checkIfNotEmpty(size))
+	{
+		return leading();
+	}
+	if (scores[1] == 0) {
+		return 1;
+	}
+	if (scores[0] == 1) {
+		return 2;
+	}
+	return 0;
+}
+
+int checkIfNotEmpty(int size) {
+	for (int i = 0; i < size; i++)
+	{
+		for (int j = 0; j < size; j++)
+		{
+			if (board[i][j] == '.')
+				return FALSE;
+		}
+	}
+	return TRUE;
+}
+
+void checkDirs(int size) {
+	int row, col, check = 0;
+	int dirs[8];
+	while (check == 0)
+	{
+		prompt_move(&row, &col, size);
+		row--;
+		col--;
+		check = checkInput(col, row, size);
+	}
+	if (is_valid_position(row, col, size)) {
+		validMove(row, col, size, dirs);
+		if (checkMoves(dirs) == 1) {
+			if (dirs[0] != 1) {
+				makeMove(dirs[0], col, row, -1, -1);
+			}
+			if (dirs[1] != 1) {
+				makeMove(dirs[1], col, row, -1, 0);
+			}
+			if (dirs[2] != 1) {
+				makeMove(dirs[2], col, row, -1, 1);
+			}
+			if (dirs[3] != 1) {
+				makeMove(dirs[3], col, row, 0, 1);
+			}
+			if (dirs[4] != 1) {
+				makeMove(dirs[4], col, row, 1, 1);
+			}
+			if (dirs[5] != 1) {
+				makeMove(dirs[5], col, row, 1, 0);
+			}
+			if (dirs[6] != 1) {
+				makeMove(dirs[6], col, row, 1, -1);
+			}
+			if (dirs[7] != 1) {
+				makeMove(dirs[7], col, row, 0, -1);
+			}
+			changeCurrentPlayer();
+		}
+		else {
+			printf("Invalid move\n");
+		}
+	}
+	else {
+		printf("Invalid move\n");
+	}
+}
+
+void makeMove(int count, int col, int row, int rowChange, int colChange) {
+	char enemy = getEnemy();
+	for (int i = 0; i < count; i++)
+	{
+		if (board[row][col] == enemy) {
+			scores[0] += (current_player == PLAYERX) ? 1 : -1;
+			scores[1] += (current_player == PLAYERO) ? 1 : -1;
+		}
+		else if (board[row][col] == '.') {
+			scores[0] += (current_player == PLAYERX) ? 1 : 0;
+			scores[1] += (current_player == PLAYERO) ? 1 : 0;
+		}
+		board[row][col] = current_player;
+		col += colChange;
+		row += rowChange;
+	}
+
+}
+
+char getEnemy() {
+	return (current_player == PLAYERX) ? PLAYERO : PLAYERX;
+}
+
+int checkMoves(int dirs[8]) {
+	for (int i = 0; i < 8; i++)
+	{
+		if (dirs[i] != 1)
+			return 1;
+	}
+	return 0;
+}
+
+void validMove(int row, int col, int size, int dirs[8]) {
+	dirs[0] = checkDir(row, col, size, -1, -1);//top left
+	dirs[1] = checkDir(row, col, size, -1, 0);//top
+	dirs[2] = checkDir(row, col, size, -1, 1);//top right
+	dirs[3] = checkDir(row, col, size, 0, 1);//right
+	dirs[4] = checkDir(row, col, size, 1, 1);//down right
+	dirs[5] = checkDir(row, col, size, 1, 0);//down
+	dirs[6] = checkDir(row, col, size, 1, -1);//down left
+	dirs[7] = checkDir(row, col, size, 0, -1);//left
+}
+
+int checkDir(int row, int col, int size, int dirRow, int dirCol) {
+	int count = 1;
+	char enemy = getEnemy();
+	while (is_valid_position(row + dirRow, col + dirCol, size)) {
+		if (board[row + dirRow][col + dirCol] == enemy)
+			count++;
+
+		else if (board[row + dirRow][col + dirCol] == current_player)
+			return count;
+		else
+			return 1;
+		row += dirRow;
+		col += dirCol;
+	}
+	return 1;
+
+}
+
+int is_valid_position(int i, int j, int size)
+{
+	if (i < 0 || i >= size || j < 0 || j >= size) return FALSE;
+	return TRUE;
+
+}
+
+void prompt_move(int* p_row, int* p_column, int size)
+{
+	printf("%c's turn\n", current_player);
+	printf("Enter row [1-%i] and column [1-%i] separated by a single space.\n", size, size);
+	scanf("%d %d", p_row, p_column);
+
+}
+
+int checkInput(int col, int row, int size) {
+	if (is_valid_position(row, col, size) && board[row][col] == '.') {
+		return  1;
+	}
+	printf("Invalid move\n");
+	return 0;
+}
+
+void displayScore() {
+	printf("X has %i points and O has %i points\n", scores[0], scores[1]);
+}
+
+void changeCurrentPlayer() {
+	if (current_player == PLAYERO)
+		current_player = PLAYERX;
+	else
+		current_player = PLAYERO;
+}
+
+int getBoardSize() {
+	int size;
+	printf("Please enter what size you want for the board to be:\n");
+	printf("  0. Exit\n");
+	printf("  1. 10X10\n");
+	printf("  2. 15X15\n");
+	printf("  3. 20X20\n");
+
+	scanf("%d", &size);
+	printf("\n");
+
+	while (1) {
+		switch (size) {
+		case 0:
+			return 0;
+		case 1:
+			return 10;
+		case 2:
+			return 15;
+		case 3:
+			return 20;
+		default:
+			printf("Invalid choice, please try again\n");
+			return getBoardSize();
+		}
+	}
+}
+
+void initGame(int size) {
+	for (int i = 0; i < MAX_SIZE; i++)
+	{
+		for (int j = 0; j < MAX_SIZE; j++)
+		{
+			board[i][j] = '.';
+		}
+	}
+	board[size / 2][size / 2] = PLAYERO;
+	board[size / 2 - 1][size / 2] = PLAYERX;
+	board[size / 2 - 1][size / 2 - 1] = PLAYERO;
+	board[size / 2][size / 2 - 1] = PLAYERX;
+	scores[0] = 2;
+	scores[1] = 2;
+	current_player = PLAYERX;
+
+}
+
+void drawBoard(int size)
+{
+	for (int i = 0; i < size; i++)
+	{
+		if (i == 0)
+			printf("   %i ", i + 1);
+		else if (i < 9)
+			printf(" %i ", i + 1);
+		else
+			printf(" %i", i + 1);
+	}
+	printf("\n");
+
+	for (int i = 0; i < size; i++)
+	{
+		if (i > 8)
+			printf("%i", (i + 1));
+		else
+			printf("%i ", (i + 1));
+		for (int j = 0; j < size; j++)
+		{
+			printf(" %c ", board[i][j]);
+		}
+		printf("\n");
+	}
+}
